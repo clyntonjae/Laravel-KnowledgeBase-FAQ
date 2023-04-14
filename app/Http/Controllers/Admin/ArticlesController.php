@@ -12,6 +12,11 @@ use App\Tag;
 use Gate;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Auth;
+use DB;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class ArticlesController extends Controller
 {
@@ -37,10 +42,70 @@ class ArticlesController extends Controller
 
     public function store(StoreArticleRequest $request)
     {
-        $article = Article::create($request->all());
-        $article->tags()->sync($request->input('tags', []));
+        DB::beginTransaction();
+        try {
+            $request->except('files');
+            $article = Article::create($request->all());
+            $article->tags()->sync($request->input('tags', []));
 
-        return redirect()->route('admin.articles.index');
+            if(count($request->files) > 0){
+                $validation = Validator::make($request->all(), [
+                    'files' => 'size:5120'
+                ]);
+    
+                if ($validation->fails()){
+                    return redirect()->back()->withInput()->with('error', 'Sorry, your file is too large.'); 
+                }
+
+                foreach ($request->file('files') as $i => $file) {
+                    $this->upload_file($file, $article->slug, $article->id);
+                }
+            }
+
+            DB::commit();
+            return redirect()->route('admin.articles.index');
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return redirect()->back()->withInput()->with('error', 'An error occured. Please try again');
+        }
+    }
+
+    private function upload_file($file, $dir, $id){
+        try {
+            $file_name = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME), '-');
+            $file_ext = pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION);
+
+            $filename = $file_name.'.'.$file_ext;
+
+            if(!Storage::disk('public')->exists('/files/'.$dir)){
+                Storage::disk('public')->makeDirectory('/files/'.$dir);
+            }
+            
+            $file->move(storage_path('/app/public/files/'.$dir), $filename);
+
+            DB::table('article_files')->insert([
+                'article_id' => $id,
+                'filename' => $filename,
+                'created_by' => Auth::user()->email,
+                'last_modified_by' => Auth::user()->email
+            ]);
+
+            return 1;
+        } catch (\Throwable $th) {
+            return 0;
+        }
+    }
+
+    public function remove_file($id){
+        DB::beginTransaction();
+        try {
+            DB::table('article_files')->where('id', $id)->delete();
+            DB::commit();
+            return response()->json(['success' => 1, 'message' => 'File deleted.']);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json(['success' => 0, 'message' => 'An error occured. Please try again.']);
+        }
     }
 
     public function edit(Article $article)
@@ -53,15 +118,39 @@ class ArticlesController extends Controller
 
         $article->load('category', 'tags');
 
-        return view('admin.articles.edit', compact('categories', 'tags', 'article'));
+        $files = DB::table('article_files')->where('article_id', $article->id)->get();
+
+        return view('admin.articles.edit', compact('categories', 'tags', 'article', 'files'));
     }
 
     public function update(UpdateArticleRequest $request, Article $article)
     {
-        $article->update($request->all());
-        $article->tags()->sync($request->input('tags', []));
+        DB::beginTransaction();
+        try {
+            $article->update($request->except('files'));
+            $article->tags()->sync($request->input('tags', []));
 
-        return redirect()->route('admin.articles.index');
+            if(count($request->files) > 0){
+                $validation = Validator::make($request->all(), [
+                    'files' => 'max:5120'
+                ]);
+
+                if ($validation->fails()){
+                    return redirect()->back()->withInput()->with('error', 'Sorry, your file is too large.'); 
+                }
+
+                foreach ($request->file('files') as $i => $file) {
+                    $this->upload_file($file, $article->slug, $article->id);
+                }
+            }
+
+            DB::commit();
+            return redirect()->route('admin.articles.index'); 
+        } catch (\Throwable $th) {
+            DB::rollback();
+            throw $th;
+            return redirect()->back()->withInput()->with('error', 'An error occured. Please try again.'); 
+        }
     }
 
     public function show(Article $article)

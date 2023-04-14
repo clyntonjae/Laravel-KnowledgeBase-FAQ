@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Article;
 use Cviebrock\EloquentSluggable\Services\SlugService;
 use Illuminate\Http\Request;
+use DB;
 
 class ArticleController extends Controller
 {
@@ -27,8 +28,10 @@ class ArticleController extends Controller
         $article->timestamps = false;
         $article->views_count++;
         $article->save();
+
+        $files = DB::table('article_files')->where('article_id', $article->id)->get();
         
-        return view('articles.show', compact('article'));
+        return view('articles.show', compact('article', 'files'));
     }
 
     public function check_slug(Request $request)

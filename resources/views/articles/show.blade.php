@@ -41,6 +41,20 @@
             <div class="article-content">
                 {!! $article->full_text !!}
             </div>
+            @if (count($files) > 0)
+                <div class="article-content">
+                    <div class="article-tags">
+                        <b>Attachments:</b>
+                        <ul>
+                            @foreach ($files as $file)
+                                <li>
+                                    <a href="{{ asset('/storage/files/'.$article->slug.'/'.$file->filename) }}" target="_blank">{{ $file->filename }}</a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+            @endif
             @if($article->tags_count)
                 <div class="article-content">
                     <div class="article-tags">

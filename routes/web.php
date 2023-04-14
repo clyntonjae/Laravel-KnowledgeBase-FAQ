@@ -38,6 +38,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
     // Articles
     Route::delete('articles/destroy', 'ArticlesController@massDestroy')->name('articles.massDestroy');
     Route::resource('articles', 'ArticlesController');
+    Route::get('/remove_file/article/{id}', 'ArticlesController@remove_file');
 
     // Faq Categories
     Route::delete('faq-categories/destroy', 'FaqCategoryController@massDestroy')->name('faq-categories.massDestroy');
