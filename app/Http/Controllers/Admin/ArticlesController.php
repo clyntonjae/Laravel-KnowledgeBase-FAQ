@@ -148,7 +148,6 @@ class ArticlesController extends Controller
             return redirect()->route('admin.articles.index'); 
         } catch (\Throwable $th) {
             DB::rollback();
-            throw $th;
             return redirect()->back()->withInput()->with('error', 'An error occured. Please try again.'); 
         }
     }
