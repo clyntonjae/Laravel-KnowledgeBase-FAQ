@@ -17,6 +17,7 @@ use DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Exception;
 
 class ArticlesController extends Controller
 {
@@ -37,15 +38,23 @@ class ArticlesController extends Controller
 
         $tags = Tag::all()->pluck('name', 'id');
 
-        return view('admin.articles.create', compact('categories', 'tags'));
+        $departments = DB::connection('mysql_essex')->table('departments')->orderBy(DB::raw('ISNULL(order_no), order_no'), 'ASC')->orderBy('order_no')->get();
+
+        return view('admin.articles.create', compact('categories', 'tags', 'departments'));
     }
 
     public function store(StoreArticleRequest $request)
     {
         DB::beginTransaction();
         try {
-            $request->except('files');
-            $article = Article::create($request->all());
+            $data = $request->except('files');
+
+            if(isset($data['is_private'])){
+                $data['allowed_departments'] = collect($data['allowed_departments'])->implode(',');
+                $data['is_private'] = 1;
+            }
+
+            $article = Article::create($data);
             $article->tags()->sync($request->input('tags', []));
 
             if(count($request->files) > 0){
@@ -58,7 +67,10 @@ class ArticlesController extends Controller
                 }
 
                 foreach ($request->file('files') as $i => $file) {
-                    $this->upload_file($file, $article->slug, $article->id);
+                    $file_upload = $this->upload_file($file, $article->slug, $article->id);
+                    if(!$file_upload['success']){
+                        return redirect()->back()->withInput()->with('error', $file_upload['message']);
+                    }
                 }
             }
 
@@ -90,10 +102,17 @@ class ArticlesController extends Controller
                 'last_modified_by' => Auth::user()->email
             ]);
 
-            return 1;
-        } catch (\Throwable $th) {
-            return 0;
+            $success = 1;
+            $message = 'File uploaded';
+        } catch (Exception $e) {
+            $success = 0;
+            $message = 'An error occured. Please try again later'; // $e->getMessage();
         }
+
+        return [
+            'success' => $success,
+            'message' => $message
+        ];
     }
 
     public function remove_file($id){
@@ -119,15 +138,26 @@ class ArticlesController extends Controller
         $article->load('category', 'tags');
 
         $files = DB::table('article_files')->where('article_id', $article->id)->get();
+        $departments = DB::connection('mysql_essex')->table('departments')->orderBy(DB::raw('ISNULL(order_no), order_no'), 'ASC')->orderBy('order_no')->get();
 
-        return view('admin.articles.edit', compact('categories', 'tags', 'article', 'files'));
+        return view('admin.articles.edit', compact('categories', 'tags', 'article', 'files', 'departments'));
     }
 
     public function update(UpdateArticleRequest $request, Article $article)
     {
         DB::beginTransaction();
         try {
-            $article->update($request->except('files'));
+            $data = $request->except('files');
+
+            if(isset($data['is_private'])){
+                $data['allowed_departments'] = collect($data['allowed_departments'])->implode(',');
+                $data['is_private'] = 1;
+            }else{
+                $data['allowed_departments'] = null;
+                $data['is_private'] = 0;
+            }
+
+            $article->update($data);
             $article->tags()->sync($request->input('tags', []));
 
             if(count($request->files) > 0){
@@ -140,7 +170,10 @@ class ArticlesController extends Controller
                 }
 
                 foreach ($request->file('files') as $i => $file) {
-                    $this->upload_file($file, $article->slug, $article->id);
+                    $file_upload = $this->upload_file($file, $article->slug, $article->id);
+                    if(!$file_upload['success']){
+                        return redirect()->back()->withInput()->with('error', $file_upload['message']); 
+                    }
                 }
             }
 
@@ -158,7 +191,10 @@ class ArticlesController extends Controller
 
         $article->load('category', 'tags');
 
-        return view('admin.articles.show', compact('article'));
+        $allowed_departments = explode(',', $article->allowed_departments);
+        $departments = DB::connection('mysql_essex')->table('departments')->whereIn('department_id', $allowed_departments)->pluck('department');
+
+        return view('admin.articles.show', compact('article', 'departments'));
     }
 
     public function destroy(Article $article)

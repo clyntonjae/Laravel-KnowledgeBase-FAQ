@@ -25,6 +25,8 @@ class Article extends Model
         'short_text',
         'views_count',
         'category_id',
+        'is_private',
+        'allowed_departments',
         'created_at',
         'updated_at',
         'deleted_at',

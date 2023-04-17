@@ -71,6 +71,20 @@
                 </p>
             </div>
             <div class="form-group">
+                @php
+                    $allowed_departments = explode(',', $article->allowed_departments);
+                @endphp
+                <label><input type="checkbox" name="is_private" id="private-article" {{ $article->is_private ? 'checked' : null }}> Is Private</label>
+                <div id="allowed-departments" style="display: none;">
+                    <label>Allowed Departments</label>
+                    <select name="allowed_departments[]" class="form-control select2 p-2" multiple="multiple">
+                        @foreach ($departments as $department)
+                            <option value="{{ $department->department_id }}" {{ in_array($department->department_id, $allowed_departments) ? 'selected' : null }}>{{ $department->department }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
                 <label>Attachments</label>
                 <input type="file" name="files[]" class="form-control" multiple="multiple">
                 <ul>
@@ -159,6 +173,21 @@
             dialogsFade: true,
             height: "500px",
         });
+
+        toggle_departments();
+        $(document).on('click', '#private-article', function (e){
+            toggle_departments();
+        });
+
+        function toggle_departments(){
+            if($('#private-article').prop('checked')){
+                $('#allowed-departments').slideDown();
+                $('#allowed-departments select').prop('required', true);
+            }else{ // is public
+                $('#allowed-departments').slideUp();
+                $('#allowed-departments select').prop('required', false);
+            }
+        }
 
         $(document).on('click', '.select-all', function (e){
             e.preventDefault();

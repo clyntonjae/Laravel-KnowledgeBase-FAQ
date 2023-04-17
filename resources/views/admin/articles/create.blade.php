@@ -60,6 +60,17 @@
                     {{ trans('cruds.article.fields.full_text_helper') }}
                 </p>
             </div>
+            <div class="form-group {{ $errors->has('is_private') ? 'has-error' : '' }}">
+                <label><input type="checkbox" name="is_private" id="private-article"> Is Private</label>
+                <div id="allowed-departments" style="display: none;">
+                    <label>Allowed Departments</label>
+                    <select name="allowed_departments[]" class="form-control select2 p-2" multiple="multiple">
+                        @foreach ($departments as $department)
+                            <option value="{{ $department->department_id }}">{{ $department->department }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
             <div class="form-group">
                 <label>Attachments</label>
                 <input type="file" name="files[]" class="form-control" multiple="multiple">
@@ -121,6 +132,21 @@
             dialogsFade: true,
             height: "500px",
         });
+
+        toggle_departments();
+        $(document).on('click', '#private-article', function (e){
+            toggle_departments();
+        });
+
+        function toggle_departments(){
+            if($('#private-article').prop('checked')){
+                $('#allowed-departments').slideDown();
+                $('#allowed-departments select').prop('required', true);
+            }else{ // is public
+                $('#allowed-departments').slideUp();
+                $('#allowed-departments select').prop('required', false);
+            }
+        }
 
         $(document).on('click', '.select-all', function (e){
             e.preventDefault();

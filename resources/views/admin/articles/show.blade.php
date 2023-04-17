@@ -60,6 +60,16 @@
                             @endif
                         </td>
                     </tr>
+                    @if ($article->is_private)
+                        <tr>
+                            <th>
+                                Allowed Departments
+                            </th>
+                            <td>
+                                {{ collect($departments)->implode(', ') }}
+                            </td>
+                        </tr>
+                    @endif
                     <tr>
                         <th>
                             Tags

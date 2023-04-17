@@ -26,6 +26,9 @@
                             {{ trans('cruds.article.fields.id') }}
                         </th>
                         <th>
+                            
+                        </th>
+                        <th>
                             {{ trans('cruds.article.fields.title') }}
                         </th>
                         <th>
@@ -56,6 +59,9 @@
                             </td>
                             <td>
                                 {{ $article->id ?? '' }}
+                            </td>
+                            <td>
+                                {{ $article->is_private ? 'Private' : 'Public' }}
                             </td>
                             <td>
                                 {{ $article->title ?? '' }}
