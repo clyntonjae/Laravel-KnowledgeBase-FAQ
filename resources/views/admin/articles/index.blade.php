@@ -26,7 +26,7 @@
                             {{ trans('cruds.article.fields.id') }}
                         </th>
                         <th>
-                            
+                            Status
                         </th>
                         <th>
                             {{ trans('cruds.article.fields.title') }}
